@@ -1,0 +1,3 @@
+day-sky.jpg: https://unsplash.com/photos/above-cloud-photo-of-blue-skies-yQorCngxzwI?utm_content=creditShareLink&utm_medium=referral&utm_source=unsplash
+
+night-sky.jpg: https://unsplash.com/photos/starry-night-wallpaper-9sxeKzuCVoE?utm_content=creditShareLink&utm_medium=referral&utm_source=unsplash
