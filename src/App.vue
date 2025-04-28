@@ -68,15 +68,46 @@
       <section class="forecast-container">
         <h2>Forecasts</h2>
         <div class="button-container">
-          <button class="btn btn-outline-secondary">5-Days</button>
-          <button class="btn btn-outline-secondary" @click="fetchHourlyForecast">Hourly</button>
+          <button class="btn btn-outline-secondary" @click="showFiveDayForecast = true">
+            5-Days
+          </button>
+          <button class="btn btn-outline-secondary" @click="showFiveDayForecast = false; fetchHourlyForecast()">
+            Hourly
+          </button>
         </div>
-        <!-- Charts -->
-        <!-- Hourly Temperature Chart -->
-        <canvas id="hourlyChart" width="800" height="300"></canvas>
-        <!-- Hourly Rainfall Chart -->
-        <canvas id="rainfallChart" width="800" height="300"></canvas>
+
+        <!-- 5-Day Forecast Table -->
+        <section class="daily-forecast-container" v-if="showFiveDayForecast">
+          <table class="forecast-table">
+            <thead>
+              <tr>
+                <th>Day</th>
+                <th>Condition</th>
+                <th>High</th>
+                <th>Low</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="day in dailyForecast" :key="day.date">
+                <td>{{ day.date }}</td>
+                <td>
+                  <i :class="getWeatherIcon(day.condition)" class="forecast-icon"></i>
+                  {{ day.condition }}
+                </td>
+                <td>{{ day.high }}°F</td>
+                <td>{{ day.low }}°F</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- Hourly Charts -->
+        <section v-else>
+          <canvas id="hourlyChart" width="800" height="300"></canvas>
+          <canvas id="rainfallChart" width="800" height="300"></canvas>
+        </section>
       </section>
+
     </main>
   </div>
 </template>
@@ -99,6 +130,8 @@ export default {
       chart: null,
       bookmarks: [],
       showBookmarks: false,
+      dailyForecast: [],
+      showFiveDayForecast: false,
     };
   },
   computed: {
@@ -118,7 +151,7 @@ export default {
       }
 
       const condition = this.weather.weather[0].main.toLowerCase();
-      const isDay = !this.isNight; 
+      const isDay = !this.isNight;
 
       switch (condition) {
         case 'clear':
@@ -148,9 +181,21 @@ export default {
           .then(response => response.json())
           .then(data => {
             this.setResults(data);
+            this.fetchFiveDayForecast(data.coord.lat, data.coord.lon);
           })
           .catch(error => console.error('Error fetching weather data:', error));
       }
+    },
+    fetchFiveDayForecast(lat, lon) {
+      fetch(
+        `${this.url_base}forecast?lat=${lat}&lon=${lon}&units=imperial&appid=${this.api_key}`
+      )
+        .then(response => response.json())
+        .then(data => {
+          console.log('5-Day/3-Hour Forecast Data:', data); // Debugging: Log the API response
+          this.dailyForecast = this.processFiveDayForecast(data.list); // Process the data
+        })
+        .catch(error => console.error('Error fetching 5-day forecast:', error));
     },
     setResults(results) {
       this.weather = results;
@@ -367,6 +412,62 @@ export default {
           return 'fa-solid fa-meteor';
       }
     },
+    formatDate(timestamp) {
+      const date = new Date(timestamp * 1000);
+      return date.toLocaleDateString('en-US', { weekday: 'long' }); // Format as "Monday", "Tuesday", etc.
+    },
+    getWeatherIcon(condition) {
+
+      switch (condition) {
+        case 'Clear':
+          return 'fa-solid fa-sun';
+        case 'Clouds':
+          return 'fa-solid fa-cloud-sun';
+        case 'Rain':
+          return 'fa-solid fa-cloud-rain';
+        case 'Thunderstorm':
+          return 'fa-solid fa-cloud-bolt';
+        case 'Snow':
+          return 'fa-solid fa-snowflake';
+        case 'Haze':
+        case 'Mist':
+        case 'Fog':
+          return 'fa-solid fa-smog';
+        default:
+          // Unknown weather condition
+          return 'fa-solid fa-meteor';
+      }
+    },
+    processFiveDayForecast(forecastList) {
+      const dailyData = {};
+
+      forecastList.forEach(item => {
+        const date = new Date(item.dt * 1000).toLocaleDateString('en-US', {
+          weekday: 'long',
+        });
+
+        if (!dailyData[date]) {
+          dailyData[date] = {
+            high: item.main.temp_max,
+            low: item.main.temp_min,
+            condition: item.weather[0].main,
+          };
+        } else {
+          dailyData[date].high = Math.max(dailyData[date].high, item.main.temp_max);
+          dailyData[date].low = Math.min(dailyData[date].low, item.main.temp_min);
+        }
+      });
+
+      // Convert grouped data into an array and limit to 5 days
+      return Object.entries(dailyData)
+        .map(([date, data]) => ({
+          date,
+          high: Math.round(data.high),
+          low: Math.round(data.low),
+          condition: data.condition,
+        }))
+        .slice(0, 5);
+    },
   },
 };
 </script>
@@ -532,5 +633,37 @@ export default {
 
 .bookmarks-header h3 {
   margin: 0;
+}
+
+.daily-forecast-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin: 2rem auto;
+  width: 80vw;
+}
+
+.forecast-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: center;
+}
+
+.forecast-table th,
+.forecast-table td {
+  border: 1px solid #ddd;
+  padding: 0.5rem;
+}
+
+.forecast-table th {
+  background-color: #f8f9fa;
+  font-weight: bold;
+}
+
+.forecast-icon {
+  margin-right: 0.5rem;
+  font-size: 1.2rem;
 }
 </style>
