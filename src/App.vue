@@ -12,10 +12,37 @@
             placeholder="Search for a location.." />
         </div>
         <!-- Bookmark Button -->
-        <button class="btn btn-outline-secondary"><i class="fa-regular fa-bookmark"></i></button>
+        <button class="btn btn-outline-secondary" @click="showBookmarks = !showBookmarks">
+          <i class="fa-regular fa-bookmark"></i>
+        </button>
       </section>
+
+      <!-- Bookmarks Side Menu -->
+      <aside class="bookmarks-menu" v-if="showBookmarks">
+        <div class="bookmarks-header">
+          <h3>Saved Locations</h3>
+          <button class="btn btn-outline-secondary" @click="showBookmarks = false">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <ul>
+          <li v-for="bookmark in bookmarks" :key="bookmark.name">
+            <span @click="selectBookmark(bookmark.name)">
+              {{ bookmark.name }}, {{ bookmark.country }}
+            </span>
+            <button @click="removeBookmark(bookmark.name)"><i class="fa-solid fa-xmark"></i></button>
+          </li>
+        </ul>
+      </aside>
+
+      <!-- Main Weather Component -->
       <section class="main-weather" :class="{ night: isNight }">
         <div class="weather-info" v-if="weather && weather.main">
+          <!-- Bookmark Button -->
+          <button class="bookmark-btn" @click="toggleBookmark" :class="{ saved: isBookmarked }">
+            <i :class="isBookmarked ? 'fa-solid fa-bookmark' : 'fa-regular fa-bookmark'"></i>
+          </button>
+          <!-- Weather Icon and Info -->
           <i class="fa-solid fa-cloud weather-icon"></i>
           <h2 class="city-name">{{ weather.name }}</h2>
           <p class="location">{{ weather.name }}, {{ weather.sys?.country }}</p>
@@ -28,6 +55,7 @@
           <p>Loading weather data...</p>
         </div>
       </section>
+
       <section class="forecast-container">
         <h2>Forecasts</h2>
         <div class="button-container">
@@ -60,6 +88,8 @@ export default {
       sunset: null,
       hourlyData: [],
       chart: null,
+      bookmarks: [],
+      showBookmarks: false,
     };
   },
   computed: {
@@ -68,6 +98,9 @@ export default {
 
       const currentTime = new Date().getTime() / 1000;
       return currentTime < this.sunrise || currentTime > this.sunset;
+    },
+    isBookmarked() {
+      return this.bookmarks.some(b => b.name === this.weather.name);
     },
   },
   methods: {
@@ -109,10 +142,10 @@ export default {
       });
 
       const rainfall = this.hourlyData.map(item => {
-        const rainVolume = item.rain?.['3h'] || 0; 
+        const rainVolume = item.rain?.['3h'] || 0;
         // Ensure rainfall chart only shows positive values
-        const rainInInches = Math.max(0, rainVolume / 25.4); 
-        return rainInInches.toFixed(2); 
+        const rainInInches = Math.max(0, rainVolume / 25.4);
+        return rainInInches.toFixed(2);
       });
 
       if (this.rainfallChart) {
@@ -168,7 +201,7 @@ export default {
             y: {
               // Ensure rainfall chart only shows positive values
               beginAtZero: true,
-                min: 0,
+              min: 0,
               title: {
                 display: false,
               },
@@ -247,6 +280,36 @@ export default {
         },
       });
     },
+    addBookmark() {
+      if (this.weather.name && !this.bookmarks.some(b => b.name === this.weather.name)) {
+        this.bookmarks.push({
+          name: this.weather.name,
+          country: this.weather.sys?.country,
+        });
+      }
+    },
+    removeBookmark(locationName) {
+      this.bookmarks = this.bookmarks.filter(b => b.name !== locationName);
+    },
+    selectBookmark(locationName) {
+      this.searchQuery = locationName;
+      this.fetchWeather({ key: 'Enter' });
+      this.showBookmarks = false;
+    },
+    toggleBookmark() {
+      if (this.isBookmarked) {
+        // Remove the location if it's already bookmarked
+        this.bookmarks = this.bookmarks.filter(b => b.name !== this.weather.name);
+      } else {
+        // Add the location to bookmarks
+        if (this.weather.name) {
+          this.bookmarks.push({
+            name: this.weather.name,
+            country: this.weather.sys?.country,
+          });
+        }
+      }
+    },
   },
 };
 </script>
@@ -290,6 +353,7 @@ export default {
 }
 
 .weather-info {
+  position: relative;
   background-color: rgba(255, 255, 255, 0.65);
   padding: 6rem;
   min-width: 60vw;
@@ -297,6 +361,18 @@ export default {
   border-radius: 10px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
+
+.bookmark-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #333;
+  cursor: pointer;
+}
+
 
 .weather-icon {
   font-size: 3rem;
@@ -326,10 +402,66 @@ export default {
   margin-top: 1rem;
 }
 
-#hourlyChart, #rainfallChart {
+#hourlyChart,
+#rainfallChart {
   font-family: "Poppins", sans-serif;
   max-width: 90vw;
   height: auto;
   margin: 1rem auto;
+}
+
+.bookmarks-menu {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 300px;
+  height: 100%;
+  background-color: #f8f9fa;
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+  padding: 1rem;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.bookmarks-menu h3 {
+  margin-bottom: 1rem;
+}
+
+.bookmarks-menu ul {
+  list-style: none;
+  padding: 0;
+}
+
+.bookmarks-menu li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  background-color: aliceblue;
+  border: #6c757d 1px solid;
+  border-radius: 15px;
+  padding: 1rem;
+}
+
+.bookmarks-menu li span {
+  cursor: pointer;
+}
+
+.bookmarks-menu li button {
+  background: none;
+  border: none;
+  color: #333;
+  cursor: pointer;
+}
+
+.bookmarks-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.bookmarks-header h3 {
+  margin: 0;
 }
 </style>
