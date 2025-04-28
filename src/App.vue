@@ -54,14 +54,15 @@
           <i :class="weatherIcon" class="weather-icon"></i>
           <!-- Weather Info -->
           <h2 class="city-name">{{ weather.name }}</h2>
-          <p class="location">{{ weather.name }}, {{ weather.sys?.country }}</p>
+          <p class="location">{{ weather.state }}, {{ weather.sys?.country }}</p>
           <p class="current-temp">{{ Math.round(weather.main.temp) }}°F</p>
           <p class="weather-condition">{{ weather.weather[0].main }}</p>
-          <p class="high-low">H:{{ Math.round(weather.main.temp_max) }}°F L:{{ Math.round(weather.main.temp_min) }}°F
+          <p class="high-low">
+            H: {{ currentDayHighLow.high }}°F L: {{ currentDayHighLow.low }}°F
           </p>
         </div>
         <div v-else>
-          <p>Loading weather data...</p>
+          <p class="loading-text">Loading...</p>
         </div>
       </section>
 
@@ -123,7 +124,10 @@ export default {
       api_key: '4678aa73a2c81a5a92de8b076aef4fb8',
       url_base: 'https://api.openweathermap.org/data/2.5/',
       searchQuery: '',
-      weather: {},
+      weather: {
+        // State/Province (if applicable)
+        state: '',
+      },
       sunrise: null,
       sunset: null,
       hourlyData: [],
@@ -173,6 +177,18 @@ export default {
           return 'fa-solid fa-meteor';
       }
     },
+    currentDayHighLow() {
+      if (!this.dailyForecast || this.dailyForecast.length === 0) {
+        return { high: null, low: null };
+      }
+
+      // Get forecast from the dailyForecast array
+      const today = this.dailyForecast[0];
+      return {
+        high: today.high,
+        low: today.low,
+      };
+    },
   },
   methods: {
     fetchWeather(event) {
@@ -182,6 +198,7 @@ export default {
           .then(data => {
             this.setResults(data);
             this.fetchFiveDayForecast(data.coord.lat, data.coord.lon);
+            this.fetchState(data.coord.lat, data.coord.lon); 
           })
           .catch(error => console.error('Error fetching weather data:', error));
       }
@@ -468,6 +485,18 @@ export default {
         }))
         .slice(0, 5);
     },
+    // Fetch state/province based on coordinates
+    fetchState(lat, lon) {
+      fetch(`https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${this.api_key}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data && data.length > 0) {
+            // Add state/province to the weather object
+            this.weather.state = data[0].state || '';
+          }
+        })
+        .catch(error => console.error('Error fetching location details:', error));
+    }
   },
 };
 </script>
