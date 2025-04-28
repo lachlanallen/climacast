@@ -27,10 +27,18 @@
         </div>
         <ul>
           <li v-for="bookmark in bookmarks" :key="bookmark.name">
-            <span @click="selectBookmark(bookmark.name)">
-              {{ bookmark.name }}, {{ bookmark.country }}
-            </span>
-            <button @click="removeBookmark(bookmark.name)"><i class="fa-solid fa-xmark"></i></button>
+            <!-- Left-aligned content -->
+            <div class="left-content">
+              <!-- Dynamic Weather Icon -->
+              <i :class="getBookmarkIcon(bookmark)" class="bookmark-weather-icon"></i>
+              <span @click="selectBookmark(bookmark.name)">
+                {{ bookmark.name }}, {{ bookmark.country }}
+              </span>
+            </div>
+            <!-- Right-aligned remove button -->
+            <button @click="removeBookmark(bookmark.name)">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
           </li>
         </ul>
       </aside>
@@ -42,8 +50,9 @@
           <button class="bookmark-btn" @click="toggleBookmark" :class="{ saved: isBookmarked }">
             <i :class="isBookmarked ? 'fa-solid fa-bookmark' : 'fa-regular fa-bookmark'"></i>
           </button>
-          <!-- Weather Icon and Info -->
-          <i class="fa-solid fa-cloud weather-icon"></i>
+          <!-- Dynamic Weather Icon -->
+          <i :class="weatherIcon" class="weather-icon"></i>
+          <!-- Weather Info -->
           <h2 class="city-name">{{ weather.name }}</h2>
           <p class="location">{{ weather.name }}, {{ weather.sys?.country }}</p>
           <p class="current-temp">{{ Math.round(weather.main.temp) }}°F</p>
@@ -101,6 +110,35 @@ export default {
     },
     isBookmarked() {
       return this.bookmarks.some(b => b.name === this.weather.name);
+    },
+    weatherIcon() {
+      if (!this.weather.weather || this.weather.weather.length === 0) {
+        // Icon if no weather data is available
+        return 'fa-solid fa-cloud';
+      }
+
+      const condition = this.weather.weather[0].main.toLowerCase();
+      const isDay = !this.isNight; 
+
+      switch (condition) {
+        case 'clear':
+          return isDay ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+        case 'clouds':
+          return isDay ? 'fa-solid fa-cloud-sun' : 'fa-solid fa-cloud-moon';
+        case 'rain':
+          return 'fa-solid fa-cloud-rain';
+        case 'thunderstorm':
+          return 'fa-solid fa-cloud-bolt';
+        case 'snow':
+          return 'fa-solid fa-snowflake';
+        case 'haze':
+        case 'mist':
+        case 'fog':
+          return 'fa-solid fa-smog';
+        default:
+          // Unknown weather condition
+          return 'fa-solid fa-meteor';
+      }
     },
   },
   methods: {
@@ -280,14 +318,6 @@ export default {
         },
       });
     },
-    addBookmark() {
-      if (this.weather.name && !this.bookmarks.some(b => b.name === this.weather.name)) {
-        this.bookmarks.push({
-          name: this.weather.name,
-          country: this.weather.sys?.country,
-        });
-      }
-    },
     removeBookmark(locationName) {
       this.bookmarks = this.bookmarks.filter(b => b.name !== locationName);
     },
@@ -306,8 +336,35 @@ export default {
           this.bookmarks.push({
             name: this.weather.name,
             country: this.weather.sys?.country,
+            // Save the weather and day/night condition
+            condition: this.weather.weather[0].main.toLowerCase(),
+            isDay: !this.isNight,
           });
         }
+      }
+    },
+    getBookmarkIcon(bookmark) {
+      const condition = bookmark.condition;
+      const isDay = bookmark.isDay;
+
+      switch (condition) {
+        case 'clear':
+          return isDay ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+        case 'clouds':
+          return isDay ? 'fa-solid fa-cloud-sun' : 'fa-solid fa-cloud-moon';
+        case 'rain':
+          return 'fa-solid fa-cloud-rain';
+        case 'thunderstorm':
+          return 'fa-solid fa-cloud-bolt';
+        case 'snow':
+          return 'fa-solid fa-snowflake';
+        case 'haze':
+        case 'mist':
+        case 'fog':
+          return 'fa-solid fa-smog';
+        default:
+          // Unknown weather condition
+          return 'fa-solid fa-meteor';
       }
     },
   },
@@ -376,6 +433,7 @@ export default {
 
 .weather-icon {
   font-size: 3rem;
+  margin-bottom: 1rem;
 }
 
 .city-name {
@@ -445,6 +503,7 @@ export default {
 
 .bookmarks-menu li span {
   cursor: pointer;
+  margin-left: 0.5rem;
 }
 
 .bookmarks-menu li button {
@@ -452,6 +511,16 @@ export default {
   border: none;
   color: #333;
   cursor: pointer;
+}
+
+.bookmarks-menu li .left-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bookmark-weather-icon {
+  font-size: 1.5rem;
 }
 
 .bookmarks-header {
